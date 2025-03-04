@@ -28,7 +28,7 @@ import (
 	"strings"
 	"os/exec"
 
-	"github.com/go-debos/debos"
+	"github.com/t3gemstone/debos"
 )
 
 var tarOpts = map[string]string{

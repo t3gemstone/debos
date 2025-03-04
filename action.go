@@ -2,8 +2,9 @@ package debos
 
 import (
 	"bytes"
-	"github.com/go-debos/fakemachine"
 	"log"
+
+	"github.com/go-debos/fakemachine"
 )
 
 type DebosState int
@@ -24,6 +25,7 @@ type Partition struct {
 type CommonContext struct {
 	Scratchdir      string
 	Rootdir         string
+	AptCachedir     string
 	Artifactdir     string
 	Downloaddir     string
 	Image           string
@@ -41,17 +43,17 @@ type CommonContext struct {
 
 type DebosContext struct {
 	*CommonContext
-	RecipeDir       string
-	Architecture    string
+	RecipeDir    string
+	Architecture string
 }
 
 func (c *DebosContext) Origin(o string) (string, bool) {
-  if o == "recipe" {
-    return c.RecipeDir, true
-  } else {
-    path, found := c.Origins[o];
-    return path, found
-  }
+	if o == "recipe" {
+		return c.RecipeDir, true
+	} else {
+		path, found := c.Origins[o]
+		return path, found
+	}
 }
 
 type Action interface {

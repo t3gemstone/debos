@@ -27,7 +27,9 @@ Optional properties:
 package actions
 
 import (
-	"github.com/go-debos/debos"
+	"log"
+
+	"github.com/t3gemstone/debos"
 )
 
 type AptAction struct {
@@ -49,7 +51,7 @@ func (apt *AptAction) Run(context *debos.DebosContext) error {
 	aptConfig := []string{}
 
 	/* Don't show progress update percentages */
-	aptConfig = append(aptConfig, "-o=quiet::NoUpdate=1")
+	aptConfig = append(aptConfig, "-o quiet::NoUpdate=1")
 
 	aptOptions := []string{"apt-get", "-y"}
 	aptOptions = append(aptOptions, aptConfig...)
@@ -66,6 +68,7 @@ func (apt *AptAction) Run(context *debos.DebosContext) error {
 	aptOptions = append(aptOptions, apt.Packages...)
 
 	c := debos.NewChrootCommandForContext(*context)
+	c.AddBindMount(context.AptCachedir, "/var/cache/apt")
 	c.AddEnv("DEBIAN_FRONTEND=noninteractive")
 
 	if apt.Update {
@@ -86,7 +89,18 @@ func (apt *AptAction) Run(context *debos.DebosContext) error {
 
 	cmd := []string{"apt-get"}
 	cmd = append(cmd, aptConfig...)
-	cmd = append(cmd, "clean")
+
+	if context.Scratchdir == "" {
+		if context.Verbose {
+			log.Printf("Clearing all APT cache")
+		}
+		cmd = append(cmd, "clean")
+	} else {
+		if context.Verbose {
+			log.Printf("Clearing old APT cache")
+		}
+		cmd = append(cmd, "autoclean")
+	}
 
 	err = c.Run("apt", cmd...)
 	if err != nil {

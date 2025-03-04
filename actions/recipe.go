@@ -78,7 +78,7 @@ package actions
 import (
 	"bytes"
 	"fmt"
-	"github.com/go-debos/debos"
+	"github.com/t3gemstone/debos"
 	"gopkg.in/yaml.v2"
 	"github.com/alessio/shellescape"
 	"path"

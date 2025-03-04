@@ -36,7 +36,7 @@ import (
 	"path"
 	"strconv"
 
-	"github.com/go-debos/debos"
+	"github.com/t3gemstone/debos"
 )
 
 type RawAction struct {

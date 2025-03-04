@@ -9,10 +9,10 @@ import (
 	"strings"
 
 	"github.com/docker/go-units"
-	"github.com/go-debos/debos"
-	"github.com/go-debos/debos/actions"
 	"github.com/go-debos/fakemachine"
 	"github.com/jessevdk/go-flags"
+	"github.com/t3gemstone/debos"
+	"github.com/t3gemstone/debos/actions"
 )
 
 func checkError(context *debos.DebosContext, err error, a debos.Action, stage string) int {
@@ -49,37 +49,38 @@ func warnLocalhost(variable string, value string) {
 		    Consider using an address that is valid on your network.`
 
 	if strings.Contains(value, "localhost") ||
-	   strings.Contains(value, "127.0.0.1") ||
-	   strings.Contains(value, "::1") {
+		strings.Contains(value, "127.0.0.1") ||
+		strings.Contains(value, "::1") {
 		log.Printf(message, variable)
 	}
 }
 
-
 func main() {
-	context := debos.DebosContext { &debos.CommonContext{}, "", "" }
+	context := debos.DebosContext{&debos.CommonContext{}, "", ""}
 	var options struct {
-		Backend       string            `short:"b" long:"fakemachine-backend" description:"Fakemachine backend to use" default:"auto"`
-		ArtifactDir   string            `long:"artifactdir" description:"Directory for packed archives and ostree repositories (default: current directory)"`
-		InternalImage string            `long:"internal-image" hidden:"true"`
-		TemplateVars  map[string]string `short:"t" long:"template-var" description:"Template variables (use -t VARIABLE:VALUE syntax)"`
-		DebugShell    bool              `long:"debug-shell" description:"Fall into interactive shell on error"`
-		Shell         string            `short:"s" long:"shell" description:"Redefine interactive shell binary (default: bash)" optionsl:"" default:"/bin/bash"`
-		ScratchSize   string            `long:"scratchsize" description:"Size of disk backed scratch space"`
-		CPUs          int               `short:"c" long:"cpus" description:"Number of CPUs to use for build VM (default: 2)"`
-		Memory        string            `short:"m" long:"memory" description:"Amount of memory for build VM (default: 2048MB)"`
-		ShowBoot      bool              `long:"show-boot" description:"Show boot/console messages from the fake machine"`
-		EnvironVars   map[string]string `short:"e" long:"environ-var" description:"Environment variables (use -e VARIABLE:VALUE syntax)"`
-		Verbose       bool              `short:"v" long:"verbose" description:"Verbose output"`
-		PrintRecipe   bool              `long:"print-recipe" description:"Print final recipe"`
-		DryRun        bool              `long:"dry-run" description:"Compose final recipe to build but without any real work started"`
-		DisableFakeMachine bool         `long:"disable-fakemachine" description:"Do not use fakemachine."`
+		Backend            string            `short:"b" long:"fakemachine-backend" description:"Fakemachine backend to use" default:"auto"`
+		Scratchdir         string            `long:"scratchdir" description:"Directory for root of all directories, used only when fakemachine disabled (default: .debos_XX)"`
+		ArtifactDir        string            `long:"artifactdir" description:"Directory for packed archives and ostree repositories (default: scratchdir/artifacts)"`
+		Rootdir            string            `long:"rootdir" description:"Directory for temporary rootfs folder, used only when fakemachine disabled (default: scratchdir/root)"`
+		InternalImage      string            `long:"internal-image" hidden:"true"`
+		TemplateVars       map[string]string `short:"t" long:"template-var" description:"Template variables (use -t VARIABLE:VALUE syntax)"`
+		DebugShell         bool              `long:"debug-shell" description:"Fall into interactive shell on error"`
+		Shell              string            `short:"s" long:"shell" description:"Redefine interactive shell binary (default: bash)" optionsl:"" default:"/bin/bash"`
+		ScratchSize        string            `long:"scratchsize" description:"Size of disk backed scratch space"`
+		CPUs               int               `short:"c" long:"cpus" description:"Number of CPUs to use for build VM (default: 2)"`
+		Memory             string            `short:"m" long:"memory" description:"Amount of memory for build VM (default: 2048MB)"`
+		ShowBoot           bool              `long:"show-boot" description:"Show boot/console messages from the fake machine"`
+		EnvironVars        map[string]string `short:"e" long:"environ-var" description:"Environment variables (use -e VARIABLE:VALUE syntax)"`
+		Verbose            bool              `short:"v" long:"verbose" description:"Verbose output"`
+		PrintRecipe        bool              `long:"print-recipe" description:"Print final recipe"`
+		DryRun             bool              `long:"dry-run" description:"Compose final recipe to build but without any real work started"`
+		DisableFakeMachine bool              `long:"disable-fakemachine" description:"Do not use fakemachine."`
 	}
 
 	// These are the environment variables that will be detected on the
 	// host and propagated to fakemachine. These are listed lower case, but
 	// they are detected and configured in both lower case and upper case.
-	var environ_vars = [...]string {
+	var environ_vars = [...]string{
 		"http_proxy",
 		"https_proxy",
 		"ftp_proxy",
@@ -177,21 +178,39 @@ func main() {
 
 	// if running on the host create a scratchdir
 	if !runInFakeMachine && !fakemachine.InMachine() {
-		log.Printf("fakemachine not supported, running on the host!")
-		cwd, _ := os.Getwd()
-		context.Scratchdir, err = ioutil.TempDir(cwd, ".debos-")
-		defer os.RemoveAll(context.Scratchdir)
+		context.Scratchdir = options.Scratchdir
+		if context.Scratchdir == "" {
+			cwd, _ := os.Getwd()
+			context.Scratchdir, _ = ioutil.TempDir(cwd, ".debos-")
+			defer os.RemoveAll(context.Scratchdir)
+		} else {
+			if context.Verbose {
+				log.Printf("Scratchdir=%s", context.Scratchdir)
+			}
+		}
 	}
 
-	context.Rootdir = path.Join(context.Scratchdir, "root")
+	if options.Rootdir != "" {
+		context.Rootdir = path.Join(options.Rootdir, "root")
+	} else {
+		context.Rootdir = path.Join(context.Scratchdir, "root")
+	}
+
+	context.AptCachedir = path.Join(context.Scratchdir, "apt-cache")
+	os.MkdirAll(context.AptCachedir, 0755)
+
 	context.Image = options.InternalImage
 	context.RecipeDir = path.Dir(file)
 
 	context.Artifactdir = options.ArtifactDir
 	if context.Artifactdir == "" {
-		context.Artifactdir, _ = os.Getwd()
+		context.Artifactdir = path.Join(context.Scratchdir, "artifacts")
+		os.MkdirAll(context.Artifactdir, 0755)
 	}
 	context.Artifactdir = debos.CleanPath(context.Artifactdir)
+	if context.Verbose {
+		log.Printf("Artifactdir=%s", context.Artifactdir)
+	}
 
 	// Initialise origins map
 	context.Origins = make(map[string]string)
@@ -349,6 +368,7 @@ func main() {
 		}
 	}
 
+	os.RemoveAll(context.Rootdir)
 	// Create Rootdir
 	if _, err = os.Stat(context.Rootdir); os.IsNotExist(err) {
 		err = os.Mkdir(context.Rootdir, 0755)

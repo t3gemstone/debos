@@ -29,7 +29,7 @@ import (
 	"log"
 	"path"
 
-	"github.com/go-debos/debos"
+	"github.com/t3gemstone/debos"
 )
 
 type OverlayAction struct {

@@ -2,7 +2,7 @@ package debos_test
 
 import (
 	_ "fmt"
-	"github.com/go-debos/debos"
+	"github.com/t3gemstone/debos"
 	"github.com/stretchr/testify/assert"
 	_ "reflect"
 	_ "strings"

@@ -34,6 +34,8 @@ Optional properties:
 - components -- list of components to use for packages selection.
  If no components are specified debos will use main as default.
 
+- exclude -- debootstrap base packages exclude list
+
 Example:
  components: [ main, contrib ]
 
@@ -57,8 +59,8 @@ import (
 	"path"
 	"strings"
 
-	"github.com/go-debos/debos"
 	"github.com/go-debos/fakemachine"
+	"github.com/t3gemstone/debos"
 )
 
 type DebootstrapAction struct {
@@ -73,6 +75,7 @@ type DebootstrapAction struct {
 	Components       []string
 	MergedUsr        bool `yaml:"merged-usr"`
 	CheckGpg         bool `yaml:"check-gpg"`
+	Exclude          []string
 }
 
 func NewDebootstrapAction() *DebootstrapAction {
@@ -175,6 +178,12 @@ func (d *DebootstrapAction) isLikelyOldSuite() bool {
 		return false
 	case "forky":
 		return false
+	case "focal":
+		return false
+	case "jammy":
+		return false
+	case "noble":
+		return false
 	default:
 		return true
 	}
@@ -229,8 +238,17 @@ func (d *DebootstrapAction) Run(context *debos.DebosContext) error {
 	// workaround for https://github.com/go-debos/debos/issues/361
 	if d.isLikelyOldSuite() {
 		log.Println("excluding usr-is-merged as package is not in suite")
-		cmdline = append(cmdline, "--exclude=usr-is-merged")
+		d.Exclude = append([]string{"usr-is-merged"}, d.Exclude...)
 	}
+
+	if d.Exclude != nil {
+		s := strings.Join(d.Exclude, ",")
+		cmdline = append(cmdline, fmt.Sprintf("--exclude=%s", s))
+	}
+
+	cachedir := path.Join(context.Scratchdir, "debootstrap-cache")
+	cmdline = append(cmdline, fmt.Sprintf("--cache-dir=%s", cachedir))
+	os.MkdirAll(cachedir, 0755)
 
 	cmdline = append(cmdline, d.Suite)
 	cmdline = append(cmdline, context.Rootdir)

@@ -34,7 +34,7 @@ package actions
 
 import (
 	"fmt"
-	"github.com/go-debos/debos"
+	"github.com/t3gemstone/debos"
 	"net/url"
 	"path"
 )

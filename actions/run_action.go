@@ -48,7 +48,7 @@ import (
 	"path"
 	"strings"
 
-	"github.com/go-debos/debos"
+	"github.com/t3gemstone/debos"
 )
 
 const (
